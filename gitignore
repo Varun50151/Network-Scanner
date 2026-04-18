@@ -1,0 +1,19 @@
+# Sensitive files - NEVER commit these
+password.txt
+*.env
+.env*
+
+# Python cache
+__pycache__/
+*.pyc
+*.pyo
+*.pyd
+.Python
+
+# VS Code settings
+.vscode/
+settings.json
+
+# OS files
+.DS_Store
+Thumbs.db
