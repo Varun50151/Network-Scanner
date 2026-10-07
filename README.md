@@ -1,82 +1,56 @@
-# 🛡️ Network Security Scanner
+# Network Security Scanner
 
-A high-performance, multithreaded network security tool built in Python — capable of host discovery, port scanning, banner grabbing, OS fingerprinting, vulnerability detection, and automated email reporting.
+A multithreaded network scanner I built in Python. It finds live hosts, scans ports, grabs banners, fingerprints operating systems, runs Nmap's vulnerability scripts, and emails you the results when it's done.
 
----
+I started this to get hands-on with how scanners like Nmap work under the hood, then kept adding to it. Running 100 threads through `ThreadPoolExecutor` made port scans about 50x faster than my first sequential version.
 
-## ⚡ Performance Highlight
+## What it does
 
-> Achieved a **50x performance improvement** over sequential scanning through concurrent execution using `ThreadPoolExecutor` with 100 workers — designed with low-latency and high-throughput principles in mind.
+- **Host discovery:** sends ARP requests with Scapy to find live hosts on a network range
+- **Port scanning:** scans any TCP port range concurrently
+- **Banner grabbing:** connects to open ports and reads the service banner to see what's running
+- **Vulnerability scanning:** uses Nmap (`-O -sV --script=vuln`) for OS detection, service versions and known CVEs
+- **Email reports:** sends the results to your inbox over Gmail SMTP
+- **CLI menu:** a simple colour-coded terminal menu (colorama)
 
----
+A full scan report includes open ports and their services, banners, hostnames, the detected OS (with Nmap's confidence percentage), any vulnerabilities found, and the scan time and duration.
 
-## 🔧 Features
-
-- **Host Discovery** — ARP-based live host detection across a network range using Scapy
-- **Multithreaded Port Scanning** — Concurrent TCP port scanning across any port range
-- **Banner Grabbing** — Retrieves service banners from open ports to identify running services
-- **Vulnerability Scanning** — OS fingerprinting and CVE detection via Nmap scripting engine (`--script=vuln`)
-- **Automated Email Reporting** — Sends structured scan reports directly to your inbox via SMTP (Gmail)
-- **CLI Menu Interface** — Clean, colorama-enhanced terminal UI with modular architecture
-
----
-
-## 📋 Scan Report Output
-
-Each full network scan generates a structured report including:
-
-- Open ports with service identification
-- Banner information per port
-- Detected hostnames
-- OS name, family, and detection accuracy
-- Vulnerability findings
-- Scan duration and timestamp
-
----
-
-## 🗂️ Project Structure
+## Project structure
 
 ```
 network-scanner/
-│
-├── scanner.py          # Main CLI application & core scanning logic
-├── Email_sender.py     # SMTP email reporting module
-├── Host_scanner.py     # ARP-based host discovery module
-├── message.txt         # Default email message template
-├── password.txt        # ⚠️ NOT included — see setup instructions
-├── .gitignore          # Excludes sensitive files from version control
+├── scanner.py          # main CLI and scanning logic
+├── Email_sender.py     # sends the report over SMTP
+├── Host_scanner.py     # ARP host discovery
+├── message.txt         # default email message template
+├── password.txt        # not included, see setup below
+├── .gitignore
 └── README.md
 ```
 
----
+## Getting started
 
-## 🚀 Getting Started
-
-### Prerequisites
+Install the Python dependencies:
 
 ```bash
 pip install python-nmap scapy colorama
 ```
 
-> **Note:** Nmap must be installed on your system: https://nmap.org/download.html
-> Running vulnerability scans (`-sV --script=vuln`) requires **root/admin privileges**.
+You'll also need Nmap installed on your machine (https://nmap.org/download.html). The vulnerability scan needs root/admin privileges, so run it with `sudo` on Linux or macOS, or from an admin terminal on Windows.
 
-### Setup — Email Reporting
+### Email setup
 
-1. Create a `password.txt` file in the project root (this file is gitignored):
-```
-your_gmail_app_password_here
-```
-2. Generate a Gmail App Password at: https://myaccount.google.com/apppasswords
-3. Update the sender email in `Email_sender.py` if needed
+1. Create a `password.txt` file in the project root with your Gmail app password in it. It's already gitignored, so it won't get committed.
+2. Generate the app password at https://myaccount.google.com/apppasswords
+3. Change the sender address in `Email_sender.py` to your own.
 
-### Run
+### Running it
 
 ```bash
 python scanner.py
 ```
 
-You will be prompted to enter your email, then choose from:
+It asks for your email address first, then shows the menu:
 
 ```
 1. Host Discovery
@@ -85,11 +59,11 @@ You will be prompted to enter your email, then choose from:
 4. Exit
 ```
 
----
+## How it works
 
-## 🧠 How It Works
+### Port scanning
 
-### Multithreaded Port Scanner
+Every port in the range gets submitted to a thread pool as its own task:
 
 ```python
 with ThreadPoolExecutor(max_workers=100) as executor:
@@ -97,39 +71,30 @@ with ThreadPoolExecutor(max_workers=100) as executor:
                for port in range(start_port, end_port + 1)]
 ```
 
-All ports are submitted as concurrent tasks to a thread pool. Results are collected as futures, eliminating the sequential wait time of traditional single-threaded scanners.
+Most of the time in a port scan is spent waiting on connections to time out, so doing them in parallel instead of one after another is where the speedup comes from.
 
-### Vulnerability Detection
+### Vulnerability detection
 
-Uses Nmap's `-O -sV --script=vuln` arguments to perform:
-- OS detection with accuracy percentage
-- Service version identification
-- Known CVE vulnerability matching
+The full scan hands the target to Nmap with `-O -sV --script=vuln`. That gives me the OS guess and accuracy, service versions, and any CVEs Nmap's scripts match against them.
 
----
+## Libraries used
 
-## ⚠️ Disclaimer
-
-This tool is intended for **educational purposes and authorised network testing only**. Scanning networks or systems without explicit permission is illegal and unethical. Always ensure you have written authorisation before scanning any target.
-
----
-
-## 🛠️ Technologies Used
-
-| Library | Purpose |
+| Library | Used for |
 |---|---|
-| `python-nmap` | Port scanning, OS detection, vulnerability scripts |
-| `scapy` | ARP-based host discovery |
-| `socket` | Raw TCP connection and banner grabbing |
-| `concurrent.futures` | Multithreaded execution (ThreadPoolExecutor) |
-| `smtplib` | SMTP email delivery |
-| `colorama` | Terminal colour formatting |
-| `datetime` | Scan timestamps and duration tracking |
+| `python-nmap` | port scanning, OS detection, vuln scripts |
+| `scapy` | ARP host discovery |
+| `socket` | TCP connections and banner grabbing |
+| `concurrent.futures` | the thread pool |
+| `smtplib` | sending the email report |
+| `colorama` | terminal colours |
+| `datetime` | timestamps and scan duration |
 
----
+## Disclaimer
 
-## 👤 Author
+This is for learning and for testing networks you own or have written permission to test. Scanning anything else is illegal, so please don't.
 
-**Varun Ramesh**
+## Author
+
+Varun Ramesh
 - GitHub: [@Varun50151](https://github.com/Varun50151)
 - LinkedIn: [linkedin.com/in/varun-ramesh-8b4314290](https://linkedin.com/in/varun-ramesh-8b4314290)
